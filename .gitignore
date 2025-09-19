@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Ponto de Equilíbrio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Calm Harmony -->
+    <style>
+        body {
+            background-color: #F5F5F4; /* stone-100 */
+            color: #333;
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #D4D4D8; /* zinc-300 */
+            border-radius: 0.375rem;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #0891B2; /* cyan-600 */
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background-color: #0891B2; /* cyan-600 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0E7490; /* cyan-700 */
+        }
+        .btn-danger {
+            background-color: #DC2626; /* red-600 */
+            color: white;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        .btn-danger:hover {
+            background-color: #B91C1C; /* red-700 */
+        }
+        .result-value {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #0891B2; /* cyan-600 */
+        }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            background-color: #E2E8F0; /* slate-200 */
+            color: #475569; /* slate-600 */
+            transition: background-color 0.2s ease;
+        }
+        .tab-btn.active {
+            background-color: #0891B2; /* cyan-600 */
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">Calculadora de Ponto de Equilíbrio</h1>
+            <p class="text-slate-600 mt-2">Descubra quanto você precisa vender para cobrir todos os seus custos e começar a lucrar.</p>
+        </header>
+
+        <div class="flex justify-center gap-4 mb-6">
+            <button id="tab-commerce" class="tab-btn active">Comércio</button>
+            <button id="tab-service" class="tab-btn">Serviço</button>
+        </div>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Custos Fixos -->
+                <section class="card">
+                    <h2 class="text-xl font-semibold mb-4 text-slate-700">1. Custos Fixos (Mensais)</h2>
+                    <p class="text-slate-500 mb-6 text-sm">Adicione todos os seus custos mensais que não variam com o volume de vendas.</p>
+                    <div id="fixed-costs-list" class="space-y-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <input type="text" placeholder="Ex: Aluguel" value="Aluguel" class="input-field cost-name">
+                            <input type="number" placeholder="Valor (R$)" value="2500" class="input-field fixed-cost-value w-32" min="0">
+                            <button class="btn-danger" onclick="removeItem(this)">-</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" placeholder="Ex: Salário" value="Salários" class="input-field cost-name">
+                            <input type="number" placeholder="Valor (R$)" value="3000" class="input-field fixed-cost-value w-32" min="0">
+                            <button class="btn-danger" onclick="removeItem(this)">-</button>
+                        </div>
+                    </div>
+                    <button id="add-fixed-cost" class="btn btn-primary text-sm w-full">Adicionar Custo Fixo</button>
+                </section>
+
+                <!-- Seção de Comércio -->
+                <section id="commerce-section" class="space-y-6">
+                    <!-- Custos Variáveis (Comércio) -->
+                    <div class="card">
+                        <h2 class="text-xl font-semibold mb-4 text-slate-700">2. Custos Variáveis por Unidade</h2>
+                        <p class="text-slate-500 mb-6 text-sm">Informe todos os custos que incidem sobre cada produto vendido.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="commerce-variable-cost" class="block text-sm font-medium text-slate-600 mb-1">Custo Variável por Unidade (R$)</label>
+                                <input type="number" id="commerce-variable-cost" value="25" class="input-field" min="0">
+                            </div>
+                            <div>
+                                <label for="commerce-sales-price" class="block text-sm font-medium text-slate-600 mb-1">Preço de Venda por Unidade (R$)</label>
+                                <input type="number" id="commerce-sales-price" value="50" class="input-field" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção de Serviços -->
+                <section id="service-section" class="space-y-6 hidden">
+                    <!-- Custos Variáveis (Serviços) -->
+                    <div class="card">
+                        <h2 class="text-xl font-semibold mb-4 text-slate-700">2. Custos Variáveis por Serviço</h2>
+                        <p class="text-slate-500 mb-6 text-sm">Adicione os custos que variam a cada serviço prestado (materiais, comissões, etc.).</p>
+                        <div id="variable-costs-list" class="space-y-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <input type="text" placeholder="Ex: Materiais" value="Materiais" class="input-field cost-name">
+                                <input type="number" placeholder="Valor (R$)" value="25" class="input-field variable-cost-value w-32" min="0">
+                                <button class="btn-danger" onclick="removeItem(this)">-</button>
+                            </div>
+                        </div>
+                        <button id="add-variable-cost" class="btn btn-primary text-sm w-full">Adicionar Custo Variável</button>
+                    </div>
+                    <!-- Preço de Venda (Serviços) -->
+                    <div class="card">
+                         <h2 class="text-xl font-semibold mb-4 text-slate-700">3. Preço de Venda por Serviço</h2>
+                         <p class="text-slate-500 mb-6 text-sm">Informe o preço médio que você cobra por um serviço.</p>
+                         <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                             <div>
+                                 <label for="service-sales-price" class="block text-sm font-medium text-slate-600 mb-1">Preço de Venda por Serviço (R$)</label>
+                                 <input type="number" id="service-sales-price" value="1000" class="input-field" min="0">
+                             </div>
+                         </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Resultado -->
+            <div class="lg:col-span-1">
+                <div class="card sticky top-8">
+                    <h2 class="text-xl font-semibold text-center mb-4 text-slate-700">Resultado</h2>
+                    <div class="text-center mb-6">
+                        <p class="text-slate-500">Ponto de Equilíbrio (unidades/serviços)</p>
+                        <p id="break-even-units" class="result-value">0</p>
+                        <p class="text-slate-500 mt-4">Ponto de Equilíbrio (em Receita)</p>
+                        <p id="break-even-revenue" class="result-value">R$ 0,00</p>
+                    </div>
+
+                    <div class="chart-container mb-6">
+                        <canvas id="break-even-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        const chartColors = {
+            fixed: 'rgba(251, 146, 60, 0.8)',
+            variable: 'rgba(244, 63, 94, 0.8)',
+            revenue: 'rgba(16, 185, 129, 0.8)',
+            breakEven: 'rgba(128, 128, 128, 1)',
+        };
+
+        let breakEvenChart;
+        let currentMode = 'commerce';
+
+        function initializeChart() {
+            const ctx = document.getElementById('break-even-chart').getContext('2d');
+            breakEvenChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Custo Fixo',
+                            data: [],
+                            borderColor: chartColors.fixed,
+                            backgroundColor: chartColors.fixed,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Custo Variável Total',
+                            data: [],
+                            borderColor: chartColors.variable,
+                            backgroundColor: chartColors.variable,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Receita Total',
+                            data: [],
+                            borderColor: chartColors.revenue,
+                            backgroundColor: chartColors.revenue,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Unidades / Serviços' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Valor (R$)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('commerce-section').classList.toggle('hidden', mode !== 'commerce');
+            document.getElementById('service-section').classList.toggle('hidden', mode !== 'service');
+            document.getElementById('tab-commerce').classList.toggle('active', mode === 'commerce');
+            document.getElementById('tab-service').classList.toggle('active', mode === 'service');
+            calculateBreakEven();
+        }
+
+        function calculateBreakEven() {
+            let totalFixedCosts = 0;
+            document.querySelectorAll('#fixed-costs-list .fixed-cost-value').forEach(input => {
+                totalFixedCosts += parseFloat(input.value) || 0;
+            });
+
+            let variableCostPerUnit = 0;
+            let salesPrice = 0;
+
+            if (currentMode === 'commerce') {
+                variableCostPerUnit = parseFloat(document.getElementById('commerce-variable-cost').value) || 0;
+                salesPrice = parseFloat(document.getElementById('commerce-sales-price').value) || 0;
+            } else { // Service mode
+                let totalVariableCosts = 0;
+                document.querySelectorAll('#variable-costs-list .variable-cost-value').forEach(input => {
+                    totalVariableCosts += parseFloat(input.value) || 0;
+                });
+                variableCostPerUnit = totalVariableCosts;
+                salesPrice = parseFloat(document.getElementById('service-sales-price').value) || 0;
+            }
+
+            const contributionMargin = salesPrice - variableCostPerUnit;
+            let breakEvenUnits = 0;
+            let breakEvenRevenue = 0;
+
+            if (contributionMargin > 0) {
+                breakEvenUnits = totalFixedCosts / contributionMargin;
+                breakEvenRevenue = breakEvenUnits * salesPrice;
+            }
+
+            document.getElementById('break-even-units').textContent = breakEvenUnits.toFixed(2);
+            document.getElementById('break-even-revenue').textContent = formatCurrency(breakEvenRevenue);
+
+            updateChart(totalFixedCosts, variableCostPerUnit, salesPrice, breakEvenUnits);
+        }
+
+        function updateChart(fixedCost, variableCost, salesPrice, breakEvenPoint) {
+            const labels = [];
+            const fixedData = [];
+            const variableData = [];
+            const revenueData = [];
+
+            const maxUnits = Math.ceil(breakEvenPoint * 1.5) + 5;
+            for (let i = 0; i <= maxUnits; i += 1) {
+                labels.push(i);
+                fixedData.push(fixedCost);
+                variableData.push(variableCost * i);
+                revenueData.push(salesPrice * i);
+            }
+
+            breakEvenChart.data.labels = labels;
+            breakEvenChart.data.datasets[0].data = fixedData;
+            breakEvenChart.data.datasets[1].data = variableData;
+            breakEvenChart.data.datasets[2].data = revenueData;
+
+            breakEvenChart.update();
+        }
+
+        function createCostItem(containerId, inputClass) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            div.innerHTML = `
+                <input type="text" placeholder="Nome do Custo" class="input-field cost-name">
+                <input type="number" placeholder="Valor (R$)" value="" class="input-field ${inputClass} w-32" min="0">
+                <button class="btn-danger" onclick="removeItem(this)">-</button>
+            `;
+            document.getElementById(containerId).appendChild(div);
+            calculateBreakEven();
+        }
+
+        function removeItem(button) {
+            button.parentElement.remove();
+            calculateBreakEven();
+        }
+
+        document.getElementById('add-fixed-cost').addEventListener('click', () => {
+            createCostItem('fixed-costs-list', 'fixed-cost-value');
+        });
+
+        document.getElementById('add-variable-cost').addEventListener('click', () => {
+            createCostItem('variable-costs-list', 'variable-cost-value');
+        });
+
+        document.getElementById('tab-commerce').addEventListener('click', () => {
+            switchMode('commerce');
+        });
+
+        document.getElementById('tab-service').addEventListener('click', () => {
+            switchMode('service');
+        });
+
+        document.body.addEventListener('input', (e) => {
+            if (e.target.matches('.input-field')) {
+                calculateBreakEven();
+            }
+        });
+
+        window.onload = () => {
+            initializeChart();
+            switchMode('commerce');
+        };
+    </script>
+</body>
+</html>
